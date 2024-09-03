@@ -6,22 +6,22 @@ Tensorflow（TF） 作为一款优秀的机器学习框架，自2017年发布1.0
 ## TF 2 和 TF 1 中 PS 训练差异
 在实际的客户项目中，通常数据量非常大或者模型参数量较大，需要使用到分布式训练策略。TF 2 中支持多种分布式训练策略，例如：MirroredStrategy、MultiWorkerMirroredStrategy、ParameterServerStrategy 等。Parameter Server Strategy（PSS） 作为一个支持异步的参数更新的数据并行策略，提供了非常好的分布式训练性能。
 
-TF 1 通过 Estimator 训练模型的代码中内置了自动初始化 Parameter Server（PS） 分布式集群的逻辑，具体见代码片段，可以实现从环境变量 TF_CONFIG 中自动初始化集群的信息。因此，在 TF 1 中可以通过配置 TF_CONFIG 环境变量以及手动设置集群信息两种集群初始化方法。
+TF 1 通过 Estimator 训练模型的代码中内置了自动初始化 Parameter Server（PS） 分布式集群的逻辑，具体见代码[片段](https://github.com/tensorflow/estimator/blob/25220bb0feb81e957dc1dd275455365a5a40db22/tensorflow_estimator/python/estimator/run_config.py#L342-L570)，可以实现从环境变量 TF_CONFIG 中自动初始化集群的信息。因此，在 TF 1 中可以通过配置 TF_CONFIG 环境变量以及手动设置集群信息两种集群初始化方法。
 
-TF 2 修改了 PSS 的初始化策略，需要用户主动创建策略(Strategy)，然后通过 with strategy.scope() 向 Keras API 或者自定义训练环境传递分布式策略信息。否则，无法实现分布式的训练效果。此外，TF 2 简化了节点的类型，并建议通过一个中心协调器来为 WORKER、PS 节点创建资源、分发函数计算等，用户可以在训练脚本中根据节点的任务类型（task_type） 设置不同的工作内容，详见文档。还需要注意的是，使用 TF 2.14 结合 PS 多机分布式训练模型时，要使用一个共享文件存储系统来保存模型及checkpoints文件，否则会导致训练异常。
+TF 2 修改了 PSS 的初始化策略，需要用户主动创建策略(Strategy)，然后通过 with strategy.scope() 向 Keras API 或者自定义训练环境传递分布式策略信息。否则，无法实现分布式的训练效果。此外，TF 2 简化了节点的类型，并建议通过一个中心协调器来为 WORKER、PS 节点创建资源、分发函数计算等，用户可以在训练脚本中根据节点的任务类型（task_type） 设置不同的工作内容，详见[文档](https://github.com/tensorflow/tensorflow/blob/5bc9d26649cca274750ad3625bd93422617eed4b/tensorflow/python/distribute/parameter_server_strategy_v2.py#L56)。还需要注意的是，使用 TF 2.14 结合 PS 多机分布式训练模型时，要使用一个共享文件存储系统来保存模型及checkpoints文件，否则会导致训练异常。
 
 ## Amazon SageMaker 对分布式训练的支持
 Amazon SageMaker 作为一个端到端机器学习平台，提供了丰富的功能模块，包括数据预处理、模型训练/调优、模型部署/监控、MLOps 等。其中，在模型训练模块中，SageMaker 针对不同的训练框架提供了大量的预构建深度学习环境(DLC, Deep Learning Container)，用来支持不同的框架版本及分布式训练优化等。
 
-以 TF 为例，SageMaker 内置了对 Parameter Server Strategy、MultiWorker Mirrored Strategy 及 SageMaker Distributed Data-parallel(SMDDP) 的支持。此外，SageMaker 也支持多种文件系统（如S3、EFS、FSx for Lustre）以及访问模式（如 File、FastFile、Pipe 模式等），用以满足不同数据规模、不同分布式训练方式下对数据读取的要求，具体可以参考文档。
+以 TF 为例，SageMaker 内置了对 Parameter Server Strategy、MultiWorker Mirrored Strategy 及 SageMaker Distributed Data-parallel(SMDDP) 的支持。此外，SageMaker 也支持多种文件系统（如S3、EFS、FSx for Lustre）以及访问模式（如 File、FastFile、Pipe 模式等），用以满足不同数据规模、不同分布式训练方式下对数据读取的要求，具体可以参考[文档](https://docs.aws.amazon.com/sagemaker/latest/dg/model-access-training-data.html)。
 
 SageMaker Tensorflow DLC 中与模型训练有关的 pip 库有三个：  
-- SageMaker TensorFlow training toolkit：提供针对 Tensorflow 分布式训练的支持，除了本文中用到的 Parameter Server Strategy 外，还支持 MultiWorkerMirroredStrategy 及 SageMaker Distributed Data-parallel(SMDDP)。 
-- SageMaker TensorFlow extensions：提供对 PipeModeDataset 的支持，用来以 Pipe 模式直接读取 S3 文件，而无需下载完整的文件内容到训练机器的本地存储。目前 SageMaker 已经支持 Fast File 模式，以文件系统方式访问 S3 中的文件，客户可以直接使用此模式而无需过多关注Pipe模式。
-- SageMaker training toolkit：主要目的是执行客户设定的入口训练代码文件。
+- [SageMaker TensorFlow training toolkit](https://github.com/aws/sagemaker-tensorflow-training-toolkit/blob/tf-2/src/sagemaker_tensorflow_container/training.py#L159)：提供针对 Tensorflow 分布式训练的支持，除了本文中用到的 Parameter Server Strategy 外，还支持 MultiWorkerMirroredStrategy 及 SageMaker Distributed Data-parallel(SMDDP)。 
+- [SageMaker TensorFlow extensions](https://github.com/aws/sagemaker-tensorflow-extensions)：提供对 PipeModeDataset 的支持，用来以 Pipe 模式直接读取 S3 文件，而无需下载完整的文件内容到训练机器的本地存储。目前 SageMaker 已经支持 Fast File 模式，以文件系统方式访问 S3 中的文件，客户可以直接使用此模式而无需过多关注Pipe模式。
+- [SageMaker training toolkit](https://github.com/aws/sagemaker-training-toolkit/blob/b7c660b294f882601a736d890db2445dd9d3a638/src/sagemaker_training/trainer.py#L65)：主要目的是执行客户设定的入口训练代码文件。
 
 ### SageMaker PS 原理解析
-SageMaker TensorFlow training toolkit 中与 PS 分布式有关的代码片段如下：
+SageMaker TensorFlow training toolkit 中与 PS 分布式有关的代码[片段](https://github.com/aws/sagemaker-tensorflow-training-toolkit/blob/18813ea3d5261feaa62a0635fa46893a92f2d996/src/sagemaker_tensorflow_container/training.py#L41-L88)如下：
 
 - 初始化 PS 分布式训练的环境变量，并在每台实例上拉起对应的 PS 进程
   ```python
@@ -158,7 +158,7 @@ model = tf.estimator.Estimator(
 tf.estimator.train_and_evaluate(model, train_spec, eval_spec)
 ```
 
-代码示例可以参考 DeepFM on SageMaker。
+代码示例可以参考 [DeepFM on SageMaker](https://github.com/aws-samples/deepfm-tensorflow-distributed-training-on-amazon-sagemaker/blob/main/1-ps-cpu/deepfm-sagemaker-ps-cpu.ipynb)。
 
 ### TF 2.14 的分布式训练代码示例
 如“TF 2 和 TF 1 中 PS 训练差异”章节所示，在 TF 2.14 中，如果期望使用 PS 做分布式训练，则需要关注以下配置：
@@ -346,7 +346,7 @@ tf.estimator.train_and_evaluate(model, train_spec, eval_spec)
 
 1. 定义共享存储
 
-    注意：您需要提前创建文件系统，具体创建方法可以参考文档。需要注意的是，您的文件系统需要设置合适的安全组规则，以允许 SageMaker 访问。
+    注意：您需要提前创建文件系统，具体创建方法可以参考[文档](https://docs.aws.amazon.com/efs/latest/ug/creating-using-create-fs.html)。需要注意的是，您的文件系统需要设置合适的安全组规则，以允许 SageMaker 访问。
     
     ```python
     from sagemaker.inputs import FileSystemInput
@@ -389,12 +389,12 @@ tf.estimator.train_and_evaluate(model, train_spec, eval_spec)
   
     如果您期望后续的训练作业可以复用已经启动的计算资源，则可以配置 keep_alive_period_in_seconds 参数，最大为 3600s，对于需要进行多次迭代或微调的模型，可以快速启动下一轮训练，从而提高代码调试效率。
   
-    如果您需要使用 SageMaker Remote Debugging 来调试代码，则可以将 enable_remote_debug 设置为 True，之后就可以通过 CLI 工具远程登陆到训练容器中，具体可以参考文档。
+    如果您需要使用 SageMaker Remote Debugging 来调试代码，则可以将 enable_remote_debug 设置为 True，之后就可以通过 CLI 工具远程登陆到训练容器中，具体可以参考[文档](https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-debugging.html)。
 
 #### 网络及安全组配置
 在提交模型训练作业的时候，您需要注意 subnets 参数，我们建议您：
 
 - 如果您需要访问公网下载依赖包或者数据，则需要使用私有子网，同时配置一个 NAT 网关
-- 如果您只需要访问 S3 和 EFS，不需要公网访问，则可以只配置 VPC 中的 S3 Endpoint，具体可以参考文档。
+- 如果您只需要访问 S3 和 EFS，不需要公网访问，则可以只配置 VPC 中的 S3 Endpoint，具体可以参考[文档](https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html)。
 
 针对安全组参数security_group_ids，您需要确保绑定了此安全组的资源可以正常访问 EFS 文件系统，否则会出现文件系统挂载失败的情况，导致训练无法进行。
